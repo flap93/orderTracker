@@ -1,81 +1,82 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Registro de Horas y Pedidos</title>
         <script>
-            const style = document.createElement("style");
-            style.innerHTML = `
-  body {
-    font-family: Arial, sans-serif;
-    max-width: 400px;
-    margin: auto;
-    padding: 20px;
-    background-color: #f4f4f4;
-  }
-  h2, h3 {
-    text-align: center;
-  }
-  form {
-    background: white;
-    padding: 15px;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-  }
-  label {
-    display: block;
-    margin-bottom: 10px;
-  }
-  input {
-    width: 100%;
-    padding: 8px;
-    margin-top: 5px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-  }
-  button {
-    width: 100%;
-    padding: 10px;
-    background: #28a745;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    margin-top: 10px;
-  }
-  button:hover {
-    background: #218838;
-  }
-  table {
-    width: 100%;
-    background: white;
-    border-collapse: collapse;
-    margin-top: 15px;
-  }
-  th, td {
-    border: 1px solid #ddd;
-    padding: 8px;
-    text-align: center;
-  }
-  th {
-    background: #007bff;
-    color: white;
-  }
-  td button {
-    background: #dc3545;
-    border: none;
-    padding: 5px;
-    color: white;
-    cursor: pointer;
-    border-radius: 3px;
-  }
-  td button:hover {
-    background: #c82333;
-  }
-`;
-            document.head.appendChild(style);
             document.addEventListener("DOMContentLoaded", function () {
+                const style = document.createElement("style");
+                style.innerHTML = `
+                body {
+                    font-family: Arial, sans-serif;
+                    max-width: 400px;
+                    margin: auto;
+                    padding: 20px;
+                    background-color: #f4f4f4;
+                }
+                h2, h3 {
+                    text-align: center;
+                }
+                form {
+                    background: white;
+                    padding: 15px;
+                    border-radius: 8px;
+                    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+                }
+                label {
+                    display: block;
+                    margin-bottom: 10px;
+                }
+                input {
+                    width: 100%;
+                    padding: 8px;
+                    margin-top: 5px;
+                    border: 1px solid #ccc;
+                    border-radius: 4px;
+                }
+                button {
+                    width: 100%;
+                    padding: 10px;
+                    background: #28a745;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    margin-top: 10px;
+                }
+                button:hover {
+                    background: #218838;
+                }
+                table {
+                    width: 100%;
+                    background: white;
+                    border-collapse: collapse;
+                    margin-top: 15px;
+                }
+                th, td {
+                    border: 1px solid #ddd;
+                    padding: 8px;
+                    text-align: center;
+                }
+                th {
+                    background: #007bff;
+                    color: white;
+                }
+                td button {
+                    background: #dc3545;
+                    border: none;
+                    padding: 5px;
+                    color: white;
+                    cursor: pointer;
+                    border-radius: 3px;
+                }
+                td button:hover {
+                    background: #c82333;
+                }
+            `;
+                document.head.appendChild(style);
+
                 const app = document.createElement("div");
                 app.id = "app";
                 document.body.appendChild(app);
@@ -85,14 +86,14 @@
                 <form id="workForm">
                     <label>Fecha: <input type="date" id="date"></label>
                     <label>Hora de inicio: <input type="time" id="startTime"></label>
-                    <label>Hora de fin: <input type="time" id="endTime"></label>
+                    <label>Hora de salida: <input type="time" id="endTime"></label>
                     <label>Pedidos realizados: <input type="number" id="orders" min="0"></label>
                     <button type="submit">Guardar</button>
                 </form>
                 <h3>Historial</h3>
                 <table>
                     <thead>
-                        <tr><th>Fecha</th><th>Horas Trabajadas</th><th>Pedidos</th><th>Acciones</th></tr>
+                        <tr><th>Fecha</th><th>Inicio</th><th>Salida</th><th>Horas</th><th>Pedidos</th><th>Acciones</th></tr>
                     </thead>
                     <tbody id="history"></tbody>
                 </table>
@@ -107,13 +108,18 @@
                 let workData = JSON.parse(localStorage.getItem("workData")) || [];
 
                 function calculateHours(startTime, endTime) {
-                    const start = new Date(`2000-01-01T${startTime}`);
-                    const end = new Date(`2000-01-01T${endTime}`);
+                    if (!startTime || !endTime) return 0;
 
-                    if (end < start) end.setDate(end.getDate() + 1); // Maneja turnos nocturnos
+                    const start = new Date(`1970-01-01T${startTime}:00`);
+                    let end = new Date(`1970-01-01T${endTime}:00`);
 
-                    const diffMs = end - start;
-                    return diffMs / (1000 * 60 * 60); // Convertir a horas
+                    if (end < start) {
+                        // Si la hora de salida es menor a la de inicio, significa que pasó la medianoche
+                        end.setDate(end.getDate() + 1);
+                    }
+
+                    let diff = (end - start) / (1000 * 60 * 60); // Diferencia en horas
+                    return diff > 0 ? diff : 0;
                 }
 
                 function updateUI() {
@@ -131,6 +137,8 @@
                         const row = document.createElement("tr");
                         row.innerHTML = `
                         <td>${entry.date}</td>
+                        <td>${entry.startTime}</td>
+                        <td>${entry.endTime}</td>
                         <td>${entry.hours.toFixed(2)}</td>
                         <td>${entry.orders}</td>
                         <td>
@@ -157,12 +165,19 @@
                     const startTime = document.getElementById("startTime").value;
                     const endTime = document.getElementById("endTime").value;
                     const orders = parseInt(document.getElementById("orders").value) || 0;
+                    const hours = calculateHours(startTime, endTime);
 
-                    if (!date || !startTime || !endTime) return alert("Completa todos los campos.");
+                    if (!date || !startTime || !endTime) return alert("Completa todos los campos");
 
-                    const hoursWorked = calculateHours(startTime, endTime);
+                    const editingIndex = workForm.dataset.editingIndex;
 
-                    workData.push({ date, hours: hoursWorked, orders });
+                    if (editingIndex !== undefined) {
+                        workData[editingIndex] = { date, startTime, endTime, hours, orders };
+                        delete workForm.dataset.editingIndex;
+                    } else {
+                        workData.push({ date, startTime, endTime, hours, orders });
+                    }
+
                     localStorage.setItem("workData", JSON.stringify(workData));
                     updateUI();
                     workForm.reset();
@@ -170,11 +185,13 @@
 
                 window.editEntry = function (index) {
                     const entry = workData[index];
+
                     document.getElementById("date").value = entry.date;
                     document.getElementById("startTime").value = entry.startTime;
                     document.getElementById("endTime").value = entry.endTime;
                     document.getElementById("orders").value = entry.orders;
-                    deleteEntry(index);
+
+                    workForm.dataset.editingIndex = index;
                 };
 
                 window.deleteEntry = function (index) {
