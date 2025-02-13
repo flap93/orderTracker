@@ -85,15 +85,18 @@
                 <h2>Registro de Horas y Pedidos</h2>
                 <form id="workForm">
                     <label>Fecha: <input type="date" id="date"></label>
-                    <label>Hora de inicio: <input type="time" id="startTime"></label>
-                    <label>Hora de salida: <input type="time" id="endTime"></label>
+                    <div id="timeIntervals">
+                        <label>Hora de inicio: <input type="time" class="startTime"></label>
+                        <label>Hora de salida: <input type="time" class="endTime"></label>
+                    </div>
+                    <button type="button" id="addInterval">Agregar intervalo</button>
                     <label>Pedidos realizados: <input type="number" id="orders" min="0"></label>
                     <button type="submit">Guardar</button>
                 </form>
                 <h3>Historial</h3>
                 <table>
                     <thead>
-                        <tr><th>Fecha</th><th>Inicio</th><th>Salida</th><th>Horas</th><th>Pedidos</th><th>Acciones</th></tr>
+                        <tr><th>Fecha</th><th>Horas</th><th>Pedidos</th><th>Intervalos</th><th>Acciones</th></tr>
                     </thead>
                     <tbody id="history"></tbody>
                 </table>
@@ -104,6 +107,8 @@
                 const workForm = document.getElementById("workForm");
                 const historyTable = document.getElementById("history");
                 const monthlySummary = document.getElementById("monthlySummary");
+                const addIntervalButton = document.getElementById("addInterval");
+                const timeIntervalsDiv = document.getElementById("timeIntervals");
 
                 let workData = JSON.parse(localStorage.getItem("workData")) || [];
 
@@ -122,6 +127,12 @@
                     return diff > 0 ? diff : 0;
                 }
 
+                function calculateTotalHours(intervals) {
+                    return intervals.reduce((total, interval) => {
+                        return total + calculateHours(interval.start, interval.end);
+                    }, 0);
+                }
+
                 function updateUI() {
                     historyTable.innerHTML = "";
                     const monthlyTotals = {};
@@ -135,12 +146,14 @@
                         monthlyTotals[month].orders += entry.orders;
 
                         const row = document.createElement("tr");
+                        const intervalsText = entry.intervals
+                            .map((interval) => `Inicio: ${interval.start} - Fin: ${interval.end}`)
+                            .join("<br>");
                         row.innerHTML = `
                         <td>${entry.date}</td>
-                        <td>${entry.startTime}</td>
-                        <td>${entry.endTime}</td>
                         <td>${entry.hours.toFixed(2)}</td>
                         <td>${entry.orders}</td>
+                        <td>${intervalsText}</td>
                         <td>
                             <button onclick="editEntry(${index})">Editar</button>
                             <button onclick="deleteEntry(${index})">Eliminar</button>
@@ -162,34 +175,58 @@
                 workForm.addEventListener("submit", (e) => {
                     e.preventDefault();
                     const date = document.getElementById("date").value;
-                    const startTime = document.getElementById("startTime").value;
-                    const endTime = document.getElementById("endTime").value;
                     const orders = parseInt(document.getElementById("orders").value) || 0;
-                    const hours = calculateHours(startTime, endTime);
+                    const intervals = Array.from(document.querySelectorAll(".startTime")).map((startInput, index) => {
+                        const startTime = startInput.value;
+                        const endTime = document.querySelectorAll(".endTime")[index].value;
+                        return { start: startTime, end: endTime };
+                    });
 
-                    if (!date || !startTime || !endTime) return alert("Completa todos los campos");
+                    const hours = calculateTotalHours(intervals);
+
+                    if (!date || intervals.length === 0) return alert("Completa todos los campos");
 
                     const editingIndex = workForm.dataset.editingIndex;
 
                     if (editingIndex !== undefined) {
-                        workData[editingIndex] = { date, startTime, endTime, hours, orders };
+                        workData[editingIndex] = { date, hours, orders, intervals };
                         delete workForm.dataset.editingIndex;
                     } else {
-                        workData.push({ date, startTime, endTime, hours, orders });
+                        workData.push({ date, hours, orders, intervals });
                     }
 
                     localStorage.setItem("workData", JSON.stringify(workData));
                     updateUI();
                     workForm.reset();
+                    document.getElementById("timeIntervals").innerHTML = `
+                    <label>Hora de inicio: <input type="time" class="startTime"></label>
+                    <label>Hora de salida: <input type="time" class="endTime"></label>
+                `;
+                });
+
+                addIntervalButton.addEventListener("click", () => {
+                    const newInterval = document.createElement("div");
+                    newInterval.innerHTML = `
+                    <label>Hora de inicio: <input type="time" class="startTime"></label>
+                    <label>Hora de salida: <input type="time" class="endTime"></label>
+                `;
+                    timeIntervalsDiv.appendChild(newInterval);
                 });
 
                 window.editEntry = function (index) {
                     const entry = workData[index];
 
                     document.getElementById("date").value = entry.date;
-                    document.getElementById("startTime").value = entry.startTime;
-                    document.getElementById("endTime").value = entry.endTime;
                     document.getElementById("orders").value = entry.orders;
+                    document.getElementById("timeIntervals").innerHTML = "";
+                    entry.intervals.forEach((interval) => {
+                        const newInterval = document.createElement("div");
+                        newInterval.innerHTML = `
+                        <label>Hora de inicio: <input type="time" class="startTime" value="${interval.start}"></label>
+                        <label>Hora de salida: <input type="time" class="endTime" value="${interval.end}"></label>
+                    `;
+                        timeIntervalsDiv.appendChild(newInterval);
+                    });
 
                     workForm.dataset.editingIndex = index;
                 };
