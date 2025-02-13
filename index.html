@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="en">
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Document</title>
+        <title>Registro de Horas y Pedidos</title>
         <script>
             const style = document.createElement("style");
             style.innerHTML = `
@@ -76,36 +75,46 @@
   }
 `;
             document.head.appendChild(style);
-
             document.addEventListener("DOMContentLoaded", function () {
                 const app = document.createElement("div");
                 app.id = "app";
                 document.body.appendChild(app);
 
                 app.innerHTML = `
-    <h2>Registro de Horas y Pedidos</h2>
-    <form id="workForm">
-      <label>Fecha: <input type="date" id="date"></label>
-      <label>Horas trabajadas: <input type="number" id="hours" min="0" step="0.5"></label>
-      <label>Pedidos realizados: <input type="number" id="orders" min="0"></label>
-      <button type="submit">Guardar</button>
-    </form>
-    <h3>Historial</h3>
-    <table>
-      <thead>
-        <tr><th>Fecha</th><th>Horas</th><th>Pedidos</th><th>Acciones</th></tr>
-      </thead>
-      <tbody id="history"></tbody>
-    </table>
-    <h3>Resumen Mensual</h3>
-    <div id="monthlySummary"></div>
-  `;
+                <h2>Registro de Horas y Pedidos</h2>
+                <form id="workForm">
+                    <label>Fecha: <input type="date" id="date"></label>
+                    <label>Hora de inicio: <input type="time" id="startTime"></label>
+                    <label>Hora de fin: <input type="time" id="endTime"></label>
+                    <label>Pedidos realizados: <input type="number" id="orders" min="0"></label>
+                    <button type="submit">Guardar</button>
+                </form>
+                <h3>Historial</h3>
+                <table>
+                    <thead>
+                        <tr><th>Fecha</th><th>Horas Trabajadas</th><th>Pedidos</th><th>Acciones</th></tr>
+                    </thead>
+                    <tbody id="history"></tbody>
+                </table>
+                <h3>Resumen Mensual</h3>
+                <div id="monthlySummary"></div>
+            `;
 
                 const workForm = document.getElementById("workForm");
                 const historyTable = document.getElementById("history");
                 const monthlySummary = document.getElementById("monthlySummary");
 
                 let workData = JSON.parse(localStorage.getItem("workData")) || [];
+
+                function calculateHours(startTime, endTime) {
+                    const start = new Date(`2000-01-01T${startTime}`);
+                    const end = new Date(`2000-01-01T${endTime}`);
+
+                    if (end < start) end.setDate(end.getDate() + 1); // Maneja turnos nocturnos
+
+                    const diffMs = end - start;
+                    return diffMs / (1000 * 60 * 60); // Convertir a horas
+                }
 
                 function updateUI() {
                     historyTable.innerHTML = "";
@@ -121,21 +130,23 @@
 
                         const row = document.createElement("tr");
                         row.innerHTML = `
-        <td>${entry.date}</td>
-        <td>${entry.hours}</td>
-        <td>${entry.orders}</td>
-        <td>
-          <button onclick="editEntry(${index})">Editar</button>
-          <button onclick="deleteEntry(${index})">Eliminar</button>
-        </td>
-      `;
+                        <td>${entry.date}</td>
+                        <td>${entry.hours.toFixed(2)}</td>
+                        <td>${entry.orders}</td>
+                        <td>
+                            <button onclick="editEntry(${index})">Editar</button>
+                            <button onclick="deleteEntry(${index})">Eliminar</button>
+                        </td>
+                    `;
                         historyTable.appendChild(row);
                     });
 
                     monthlySummary.innerHTML = "";
                     for (const month in monthlyTotals) {
                         const monthDiv = document.createElement("div");
-                        monthDiv.innerHTML = `<h4>${month}</h4><p>Total Horas: ${monthlyTotals[month].hours}</p><p>Total Pedidos: ${monthlyTotals[month].orders}</p>`;
+                        monthDiv.innerHTML = `<h4>${month}</h4><p>Total Horas: ${monthlyTotals[month].hours.toFixed(
+                            2
+                        )}</p><p>Total Pedidos: ${monthlyTotals[month].orders}</p>`;
                         monthlySummary.appendChild(monthDiv);
                     }
                 }
@@ -143,12 +154,15 @@
                 workForm.addEventListener("submit", (e) => {
                     e.preventDefault();
                     const date = document.getElementById("date").value;
-                    const hours = parseFloat(document.getElementById("hours").value) || 0;
+                    const startTime = document.getElementById("startTime").value;
+                    const endTime = document.getElementById("endTime").value;
                     const orders = parseInt(document.getElementById("orders").value) || 0;
 
-                    if (!date) return alert("Selecciona una fecha");
+                    if (!date || !startTime || !endTime) return alert("Completa todos los campos.");
 
-                    workData.push({ date, hours, orders });
+                    const hoursWorked = calculateHours(startTime, endTime);
+
+                    workData.push({ date, hours: hoursWorked, orders });
                     localStorage.setItem("workData", JSON.stringify(workData));
                     updateUI();
                     workForm.reset();
@@ -157,7 +171,8 @@
                 window.editEntry = function (index) {
                     const entry = workData[index];
                     document.getElementById("date").value = entry.date;
-                    document.getElementById("hours").value = entry.hours;
+                    document.getElementById("startTime").value = entry.startTime;
+                    document.getElementById("endTime").value = entry.endTime;
                     document.getElementById("orders").value = entry.orders;
                     deleteEntry(index);
                 };
